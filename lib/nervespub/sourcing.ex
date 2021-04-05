@@ -16,6 +16,14 @@ defmodule Nervespub.Sourcing do
     |> pull_source()
   end
 
+  def pull_source(%{type: "github-repo"} = source) do
+    # TODO: pull latest update to get latest change timestamp
+    client = Tentacat.Client.new(%{access_token: System.get_env("GITHUB_PERSONAL_TOKEN", nil)})
+    [owner, repo_name] = String.split(source.identifier, "/", parts: 2)
+
+    {200, commits, _} = Tentacat.Commits.list(client, owner, repo_name)
+  end
+
   def pull_source(%{type: "github-org"} = source) do
     client = Tentacat.Client.new(%{access_token: System.get_env("GITHUB_PERSONAL_TOKEN", nil)})
 
