@@ -9,6 +9,7 @@ defmodule Nervespub.Sourcing do
   alias Nervespub.Repo
 
   alias Nervespub.Sourcing.Source
+  alias Nervespub.Sourcing.Update
 
   def pull_source(source_id) when is_integer(source_id) do
     source_id
@@ -17,11 +18,36 @@ defmodule Nervespub.Sourcing do
   end
 
   def pull_source(%{type: "github-repo"} = source) do
-    # TODO: pull latest update to get latest change timestamp
+    commit_filters = case get_latest_update(source.id, "commit") do
+      nil -> []
+      update -> [since: DateTime.to_iso8601(update.occurred_at)]
+    end
+
     client = Tentacat.Client.new(%{access_token: System.get_env("GITHUB_PERSONAL_TOKEN", nil)})
     [owner, repo_name] = String.split(source.identifier, "/", parts: 2)
 
-    {200, commits, _} = Tentacat.Commits.list(client, owner, repo_name)
+    {200, commits, _} = Tentacat.Commits.filter(client, owner, repo_name, commit_filters)
+
+    Enum.map(commits, fn commit ->
+      {:ok, _} = commit_to_update(source.id, commit)
+    end)
+
+    Logger.info("Pulled #{Enum.count(commits)} commits from #{source.name}")
+
+    {200, tags, _} = Tentacat.Repositories.Tags.list(client, owner, repo_name)
+    Enum.map(tags, fn tag ->
+      tag_to_update(source.id, tag)
+    end)
+
+    Logger.info("Pulled #{Enum.count(tags)} tags from #{source.name}")
+
+    {200, releases, _} = Tentacat.Releases.list(client, owner, repo_name)
+
+    Enum.map(releases, fn release ->
+      release_to_update(source.id, release)
+    end)
+
+    Logger.info("Pulled #{Enum.count(releases)} releases from #{source.name}")
   end
 
   def pull_source(%{type: "github-org"} = source) do
@@ -32,7 +58,7 @@ defmodule Nervespub.Sourcing do
     repos_known =
       list_source()
       |> Enum.filter(fn source -> source.type == "github-repo" end)
-      |> Enum.map(fn source -> source["identifier"] end)
+      |> Enum.map(fn source -> source.identifier end)
 
     new_sources =
       repos
@@ -98,9 +124,16 @@ defmodule Nervespub.Sourcing do
 
   """
   def create_source(attrs \\ %{}) do
-    %Source{}
+    result = %Source{}
     |> Source.changeset(attrs)
     |> Repo.insert()
+
+    case result do
+      {:ok, source} ->
+        Phoenix.PubSub.broadcast!(Nervespub.PubSub, "sources", {:source_created, source})
+        {:ok, source}
+      other -> other
+    end
   end
 
   @doc """
@@ -150,7 +183,6 @@ defmodule Nervespub.Sourcing do
     Source.changeset(source, attrs)
   end
 
-  alias Nervespub.Sourcing.Update
 
   @doc """
   Returns the list of update.
@@ -199,6 +231,65 @@ defmodule Nervespub.Sourcing do
     |> Repo.insert()
   end
 
+  def commit_to_update(source_id, commit) do
+    {:ok, dt, _} = DateTime.from_iso8601(commit["commit"]["committer"]["date"])
+    {:ok, _} = store_update(source_id, commit["sha"], %{
+      type: "commit",
+      url: commit["url"],
+      text: commit["commit"]["message"],
+      occurred_at: dt
+    })
+  end
+
+  def tag_to_update(source_id, tag) do
+    case Repo.get_by(Update,
+      type: "tag",
+      source_id: source_id,
+      reference: tag["name"]
+    ) do
+      nil ->
+        case Repo.get_by(Update,
+          type: "commit",
+          source_id: source_id,
+          reference: tag["commit"]["sha"]
+        ) do
+          nil -> {:error, :no_commit_for_tag}
+          commit ->
+            create_update(%{
+              text: tag["name"],
+              type: "tag",
+              occurred_at: commit.occurred_at,
+              reference: tag["name"],
+              url: commit.url,
+              source_id: source_id
+            })
+        end
+      update -> {:ok, update}
+    end
+  end
+
+  def release_to_update(source_id, release) do
+    {:ok, dt, _} = DateTime.from_iso8601(release["created_at"])
+    IO.inspect(release)
+    {:ok, _} = store_update(source_id, release["tag_name"], %{
+      type: "release",
+      url: release["url"],
+      text: release["body"],
+      occurred_at: dt
+    })
+  end
+
+  def store_update(source_id, reference, attrs \\ %{}) do
+    case Repo.get_by(Update, source_id: source_id, reference: reference) do
+      nil ->
+        attrs
+        |> Map.put(:source_id, source_id)
+        |> Map.put(:reference, reference)
+        |> create_update
+      update -> {:ok, update}
+    end
+  end
+
   @doc """
   Updates a update.
 
@@ -244,5 +335,16 @@ defmodule Nervespub.Sourcing do
   """
   def change_update(%Update{} = update, attrs \\ %{}) do
     Update.changeset(update, attrs)
+  end
+
+  def get_latest_update(source_id, type) do
+    from(u in Update,
+      where: [type: ^type, source_id: ^source_id],
+      limit: 1)
+    |> Repo.all()
+    |> case do
+      [] -> nil
+      [update] -> update
+    end
   end
 end
