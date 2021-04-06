@@ -4,6 +4,7 @@ defmodule Nervespub.Sourcing.Update do
   alias Nervespub.Sourcing.Source
 
   schema "updates" do
+    field :name, :string
     field :text, :string
     field :type, :string
     field :occurred_at, :utc_datetime
@@ -17,7 +18,15 @@ defmodule Nervespub.Sourcing.Update do
 
   @doc false
   @keys [
+    :name,
     :text,
+    :type,
+    :occurred_at,
+    :reference,
+    :url,
+    :source_id
+  ]
+  @required [
     :type,
     :occurred_at,
     :reference,
@@ -27,6 +36,6 @@ defmodule Nervespub.Sourcing.Update do
   def changeset(update, attrs) do
     update
     |> cast(attrs, @keys)
-    |> validate_required(@keys)
+    |> validate_required(@required)
   end
 end

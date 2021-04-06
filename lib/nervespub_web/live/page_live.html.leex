@@ -1,33 +1,49 @@
 <section>
-  <table>
-  <thead>
-    <tr>
-      <td></td>
-      <td>Name</td>
-      <td>Type</td>
-      <td>Actions</td>
-    </tr>
-  </thead>
-  <tbody>
+  <form id="filter" phx-submit="change_filter">
+    <input name="dt" type="text" value="<%= @starting_dt %>" />
+    <input type="submit" value="Filter" />
+  </form>
+  <h1>Sources with updates</h1>
   <%= for source <- @sources do %>
-  <tr>
-    <td style="min-width: 24px;">
+  <h2>
     <%= if source.official do %>
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+      <svg style="width: 24px;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
         <path fill-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
       </svg>
     <% end %>
-    </td>
-    <td><%= source.name %></td>
-    <td><%= source.type %></td>
-    <td>
-      <button phx-value-id="<%= source.id %>" phx-click="pull_source">Pull</button>
-      <button phx-value-id="<%= source.id %>" phx-click="remove_source">Remove</button>
-    </td>
-  </tr>
+    <span><%= source.name %></span>
+  </h2>
+  <p><%= source.type %></p>
+  <ul>
+    <%= for update <- source.updates do %>
+      <li>
+        <%= DateTime.to_date(update.occurred_at) %> <a href="<%= update.url %>"><%= update.type%></a> <%= update.text %>
+      </li>
+    <% end %>
+  </ul>
+  <div>
+    <button phx-value-id="<%= source.id %>" phx-click="pull_source">Pull</button>
+    <button phx-value-id="<%= source.id %>" phx-click="remove_source">Remove</button>
+  </div>
   <% end %>
-  </tbody>
-  </table>
+</section>
+<section>
+<h1>All sources</h1>
+  <%= for source <- @all_sources do %>
+  <h2>
+    <%= if source.official do %>
+      <svg style="width: 24px;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+        <path fill-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+      </svg>
+    <% end %>
+    <span><%= source.name %></span>
+  </h2>
+  <p><%= source.type %></p>
+  <div>
+    <button phx-value-id="<%= source.id %>" phx-click="pull_source">Pull</button>
+    <button phx-value-id="<%= source.id %>" phx-click="remove_source">Remove</button>
+  </div>
+  <% end %>
 </section>
 <section >
   <%= f = form_for @new_source, "#", [phx_submit: :save_source] %>

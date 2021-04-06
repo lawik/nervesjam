@@ -7,14 +7,34 @@ defmodule NervespubWeb.PageLive do
   alias Nervespub.Sourcing.Source
 
   @types ["GitHub Repo": "github-repo", "GitHub Organization": "github-org"]
+  @default_period 14 * (3600 * 24)
+  @default_unit :second
 
   @impl true
   def mount(_params, _session, socket) do
     Phoenix.PubSub.subscribe(Nervespub.PubSub, "sources")
+    Phoenix.PubSub.subscribe(Nervespub.PubSub, "updates")
     new_source = Sourcing.change_source(%Source{}, %{})
-    sources = Sourcing.list_source()
-    socket = assign(socket, new_source: new_source, sources: sources, types: @types)
+    starting_dt = DateTime.utc_now() |> DateTime.add(-@default_period, @default_unit)
+    sources = Sourcing.list_activity(starting_dt)
+    all_sources = Sourcing.list_source()
+    socket = assign(socket,
+      starting_dt: starting_dt,
+      new_source: new_source,
+      sources: sources,
+      all_sources: all_sources,
+      types: @types
+    )
+
     {:ok, socket}
+  end
+
+  @impl true
+  def handle_info(:pulled, socket) do
+    sources = Sourcing.list_activity(socket.assigns.starting_dt)
+    all_sources = Sourcing.list_source()
+    socket = assign(socket, sources: sources, all_sources: all_sources)
+    {:noreply, socket}
   end
 
   @impl true
@@ -22,6 +42,14 @@ defmodule NervespubWeb.PageLive do
     socket = socket
     |> assign(sources: [source | sources])
 
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_event("change_filter", %{"dt" => dt_iso}, socket) do
+    {:ok, dt, _} = DateTime.from_iso8601(dt_iso)
+    sources = Sourcing.list_activity(dt)
+    socket = assign(socket, starting_dt: dt, sources: sources)
     {:noreply, socket}
   end
 
@@ -54,7 +82,7 @@ defmodule NervespubWeb.PageLive do
     socket = case Sourcing.delete_source(Sourcing.get_source!(id)) do
       {:ok, _} ->
         new_source = Sourcing.change_source(%Source{}, %{})
-        sources = Sourcing.list_source()
+        sources = Sourcing.list_activity(socket.assigns.starting_dt)
         assign(socket, new_source: new_source, sources: sources)
       {:error, _} -> socket
     end

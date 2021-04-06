@@ -11,6 +11,22 @@ defmodule Nervespub.Sourcing do
   alias Nervespub.Sourcing.Source
   alias Nervespub.Sourcing.Update
 
+  def list_activity(from_dt) do
+    from(s in Source,
+      distinct: true,
+      left_join: u in assoc(s, :updates),
+      order_by: {:desc, u.occurred_at},
+      where: u.occurred_at > ^from_dt
+    )
+    |> Repo.all()
+    |> Repo.preload(
+      updates: from(u in Update,
+        order_by: {:desc, u.occurred_at},
+        where: u.occurred_at > ^from_dt
+      )
+    )
+  end
+
   def pull_source(source_id) when is_integer(source_id) do
     source_id
     |> get_source!()
@@ -48,6 +64,7 @@ defmodule Nervespub.Sourcing do
     end)
 
     Logger.info("Pulled #{Enum.count(releases)} releases from #{source.name}")
+    Phoenix.PubSub.broadcast!(Nervespub.PubSub, "updates", :pulled)
   end
 
   def pull_source(%{type: "github-org"} = source) do
@@ -80,6 +97,7 @@ defmodule Nervespub.Sourcing do
     else
       Logger.info("No new repositories from #{source.type} #{source.name}.")
     end
+    Phoenix.PubSub.broadcast!(Nervespub.PubSub, "sources", :pulled)
   end
 
   @doc """
@@ -256,7 +274,7 @@ defmodule Nervespub.Sourcing do
           nil -> {:error, :no_commit_for_tag}
           commit ->
             create_update(%{
-              text: tag["name"],
+              name: tag["name"],
               type: "tag",
               occurred_at: commit.occurred_at,
               reference: tag["name"],
@@ -272,6 +290,7 @@ defmodule Nervespub.Sourcing do
     {:ok, dt, _} = DateTime.from_iso8601(release["created_at"])
     IO.inspect(release)
     {:ok, _} = store_update(source_id, release["tag_name"], %{
+      name: release["tag_name"],
       type: "release",
       url: release["url"],
       text: release["body"],
