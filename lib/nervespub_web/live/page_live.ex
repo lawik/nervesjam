@@ -6,6 +6,8 @@ defmodule NervespubWeb.PageLive do
   alias Nervespub.Sourcing
   alias Nervespub.Sourcing.Source
 
+  require Logger
+
   @types ["GitHub Repo": "github-repo", "GitHub Organization": "github-org"]
   @default_period 14 * (3600 * 24)
   @default_unit :second
@@ -31,6 +33,7 @@ defmodule NervespubWeb.PageLive do
 
   @impl true
   def handle_info(:pulled, socket) do
+    Logger.info("pulled status received, updating state")
     sources = Sourcing.list_activity(socket.assigns.starting_dt)
     all_sources = Sourcing.list_source()
     socket = assign(socket, sources: sources, all_sources: all_sources)
@@ -38,10 +41,10 @@ defmodule NervespubWeb.PageLive do
   end
 
   @impl true
-  def handle_info({:source_created, source}, %{assigns: %{sources: sources}} = socket) do
-    socket = socket
-    |> assign(sources: [source | sources])
-
+  def handle_info({:source_created, _source}, socket) do
+    sources = Sourcing.list_activity(socket.assigns.starting_dt)
+    all_sources = Sourcing.list_source()
+    socket = assign(socket, sources: sources, all_sources: all_sources)
     {:noreply, socket}
   end
 
@@ -59,6 +62,12 @@ defmodule NervespubWeb.PageLive do
     |> String.to_integer()
     |> Sourcing.pull_source()
 
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_event("pull_all", _, socket) do
+    Sourcing.pull_all()
     {:noreply, socket}
   end
 

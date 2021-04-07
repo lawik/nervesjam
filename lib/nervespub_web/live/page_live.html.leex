@@ -1,4 +1,7 @@
 <section>
+  <div>
+    <button phx-click="pull_all">Pull all</button>
+  </div>
   <form id="filter" phx-submit="change_filter">
     <input name="dt" type="text" value="<%= @starting_dt %>" />
     <input type="submit" value="Filter" />
@@ -12,18 +15,20 @@
       </svg>
     <% end %>
     <span><%= source.name %></span>
+    <span style="font-size: 0.7em;"><%= source.type %></span>
   </h2>
-  <p><%= source.type %></p>
   <ul>
     <%= for update <- source.updates do %>
       <li>
-        <%= DateTime.to_date(update.occurred_at) %> <a href="<%= update.url %>"><%= update.type%></a> <%= update.text %>
+        <%= DateTime.to_date(update.occurred_at) %>
+        <a href="<%= update.url %>">
+          <%= update.name || update.reference %>
+        </a>
+        <%= update.text %>
       </li>
     <% end %>
   </ul>
   <div>
-    <button phx-value-id="<%= source.id %>" phx-click="pull_source">Pull</button>
-    <button phx-value-id="<%= source.id %>" phx-click="remove_source">Remove</button>
   </div>
   <% end %>
 </section>
@@ -37,11 +42,11 @@
       </svg>
     <% end %>
     <span><%= source.name %></span>
+    <button phx-value-id="<%= source.id %>" phx-click="pull_source">Pull</button>
+    <button phx-value-id="<%= source.id %>" phx-click="remove_source">Remove</button>
   </h2>
   <p><%= source.type %></p>
   <div>
-    <button phx-value-id="<%= source.id %>" phx-click="pull_source">Pull</button>
-    <button phx-value-id="<%= source.id %>" phx-click="remove_source">Remove</button>
   </div>
   <% end %>
 </section>

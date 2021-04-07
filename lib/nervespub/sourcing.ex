@@ -16,15 +16,22 @@ defmodule Nervespub.Sourcing do
       distinct: true,
       left_join: u in assoc(s, :updates),
       order_by: {:desc, u.occurred_at},
+      # where: u.occurred_at > ^from_dt and u.type != "commit"
       where: u.occurred_at > ^from_dt
     )
     |> Repo.all()
     |> Repo.preload(
       updates: from(u in Update,
         order_by: {:desc, u.occurred_at},
+        # where: u.occurred_at > ^from_dt and u.type != "commit"
         where: u.occurred_at > ^from_dt
       )
     )
+  end
+
+  def pull_all do
+    list_source()
+    |> Enum.map(&pull_source/1)
   end
 
   def pull_source(source_id) when is_integer(source_id) do
@@ -34,40 +41,44 @@ defmodule Nervespub.Sourcing do
   end
 
   def pull_source(%{type: "github-repo"} = source) do
+    Logger.info("Pulling repo: #{source.name}")
     commit_filters = case get_latest_update(source.id, "commit") do
       nil -> []
       update -> [since: DateTime.to_iso8601(update.occurred_at)]
     end
 
-    client = Tentacat.Client.new(%{access_token: System.get_env("GITHUB_PERSONAL_TOKEN", nil)})
     [owner, repo_name] = String.split(source.identifier, "/", parts: 2)
 
-    {200, commits, _} = Tentacat.Commits.filter(client, owner, repo_name, commit_filters)
+    Nervespub.Githubber.request!(Tentacat.Commits, :filter, [owner, repo_name, commit_filters], fn commits ->
+      Enum.map(commits, fn commit ->
+        {:ok, _} = commit_to_update(source.id, commit)
+      end)
+      Logger.info("Pulled #{Enum.count(commits)} commits from #{source.name}")
 
-    Enum.map(commits, fn commit ->
-      {:ok, _} = commit_to_update(source.id, commit)
+      Nervespub.Githubber.request!(Tentacat.Repositories.Tags, :list, [owner, repo_name], fn tags ->
+        Enum.map(tags, fn tag ->
+          tag_to_update(source.id, tag)
+        end)
+        Logger.info("Pulled #{Enum.count(tags)} tags from #{source.name}")
+
+
+        Nervespub.Githubber.request!(Tentacat.Releases, :list, [owner, repo_name], fn releases ->
+          Enum.map(releases, fn release ->
+            release_to_update(source.id, release)
+          end)
+
+          Logger.info("Pulled #{Enum.count(releases)} releases from #{source.name}")
+          Phoenix.PubSub.broadcast!(Nervespub.PubSub, "updates", :pulled)
+        end)
+      end)
     end)
-
-    Logger.info("Pulled #{Enum.count(commits)} commits from #{source.name}")
-
-    {200, tags, _} = Tentacat.Repositories.Tags.list(client, owner, repo_name)
-    Enum.map(tags, fn tag ->
-      tag_to_update(source.id, tag)
-    end)
-
-    Logger.info("Pulled #{Enum.count(tags)} tags from #{source.name}")
-
-    {200, releases, _} = Tentacat.Releases.list(client, owner, repo_name)
-
-    Enum.map(releases, fn release ->
-      release_to_update(source.id, release)
-    end)
-
-    Logger.info("Pulled #{Enum.count(releases)} releases from #{source.name}")
-    Phoenix.PubSub.broadcast!(Nervespub.PubSub, "updates", :pulled)
+    # {200, commits, _} = Tentacat.Commits.filter(client, owner, repo_name, commit_filters)
+    # {200, tags, _} = Tentacat.Repositories.Tags.list(client, owner, repo_name)
+    # {200, releases, _} = Tentacat.Releases.list(client, owner, repo_name)
   end
 
   def pull_source(%{type: "github-org"} = source) do
+    Logger.info("Pulling org: #{source.name}")
     client = Tentacat.Client.new(%{access_token: System.get_env("GITHUB_PERSONAL_TOKEN", nil)})
 
     {200, repos, _} = Tentacat.Repositories.list_orgs(client, source.identifier)
@@ -288,7 +299,6 @@ defmodule Nervespub.Sourcing do
 
   def release_to_update(source_id, release) do
     {:ok, dt, _} = DateTime.from_iso8601(release["created_at"])
-    IO.inspect(release)
     {:ok, _} = store_update(source_id, release["tag_name"], %{
       name: release["tag_name"],
       type: "release",
