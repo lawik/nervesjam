@@ -15,7 +15,8 @@ defmodule Nervespub.Application do
       {Phoenix.PubSub, name: Nervespub.PubSub},
       # Start the Endpoint (http/https)
       NervespubWeb.Endpoint,
-      Nervespub.Githubber
+      Nervespub.Githubber,
+      Nervespub.Scheduler
       # Start a worker by calling: Nervespub.Worker.start_link(arg)
       # {Nervespub.Worker, arg}
     ]

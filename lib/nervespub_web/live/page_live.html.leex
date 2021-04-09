@@ -20,11 +20,19 @@
   <ul>
     <%= for update <- source.updates do %>
       <li>
-        <%= DateTime.to_date(update.occurred_at) %>
+        <span>
+          <%= DateTime.to_date(update.occurred_at) %>
+        </span>
+        <span>
+          <%= update.type %>
+        </span>
+
         <a href="<%= update.url %>">
           <%= update.name || update.reference %>
         </a>
-        <%= update.text %>
+        <%= if update.text && byte_size(update.text) > 0 do %>
+        <pre><%= update.text %></pre>
+        <% end %>
       </li>
     <% end %>
   </ul>
