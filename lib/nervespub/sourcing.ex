@@ -11,20 +11,22 @@ defmodule Nervespub.Sourcing do
   alias Nervespub.Sourcing.Source
   alias Nervespub.Sourcing.Update
 
-  def list_activity(from_dt) do
+  @default_types ["release", "tag"]
+
+  def list_activity(from_dt, types \\ @default_types) do
     from(s in Source,
-      distinct: true,
       left_join: u in assoc(s, :updates),
       order_by: {:desc, u.occurred_at},
+      distinct: true,
       # where: u.occurred_at > ^from_dt and u.type != "commit"
-      where: u.occurred_at > ^from_dt
+      where: u.occurred_at > ^from_dt and u.type in ^types
     )
     |> Repo.all()
     |> Repo.preload(
       updates: from(u in Update,
         order_by: {:desc, u.occurred_at},
         # where: u.occurred_at > ^from_dt and u.type != "commit"
-        where: u.occurred_at > ^from_dt
+        where: u.occurred_at > ^from_dt and u.type in ^types
       )
     )
   end
@@ -90,7 +92,7 @@ defmodule Nervespub.Sourcing do
 
     new_sources =
       repos
-      |> Enum.reject(fn repo -> repo["archived"] or repo["name"] in repos_known end)
+      |> Enum.reject(fn repo -> repo["archived"] or repo["full_name"] in repos_known end)
       |> Enum.map(fn repo ->
         create_source(%{
           identifier: repo["full_name"],
