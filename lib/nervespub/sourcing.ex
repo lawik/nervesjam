@@ -266,7 +266,7 @@ defmodule Nervespub.Sourcing do
     {:ok, dt, _} = DateTime.from_iso8601(commit["commit"]["committer"]["date"])
     {:ok, _} = store_update(source_id, commit["sha"], %{
       type: "commit",
-      url: commit["url"],
+      url: commit["html_url"] || commit["url"],
       text: commit["commit"]["message"],
       occurred_at: dt
     })
@@ -304,7 +304,7 @@ defmodule Nervespub.Sourcing do
     {:ok, _} = store_update(source_id, release["tag_name"], %{
       name: release["tag_name"],
       type: "release",
-      url: release["url"],
+      url: release["html_url"] || release["url"],
       text: release["body"],
       occurred_at: dt
     })

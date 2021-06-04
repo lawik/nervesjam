@@ -27,7 +27,7 @@
           <%= update.type %>
         </span>
 
-        <a href="<%= update.url %>">
+        <a href="<%= update.url %>" target="_blank">
           <%= update.name || update.reference %>
         </a>
         <%= if update.text && byte_size(update.text) > 0 do %>
