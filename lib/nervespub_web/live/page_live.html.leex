@@ -7,6 +7,20 @@
     <input type="submit" value="Filter" />
   </form>
 
+  <h1>Newsletter-ready</h1>
+  <%= for source <- @sources do %>
+    <%= for update <- source.updates do %>
+        <a href="<%= update.url %>" target="_blank">
+          <%= source.name %>, <%= update.name || update.reference %>
+        </a>
+        <%= if update.text && byte_size(update.text) > 0 do %>
+          <div><%= {:safe, Earmark.as_html!(update.text)} %></div>
+        <% end %>
+    <% end %>
+  <div>
+  </div>
+  <% end %>
+
   <h1>Sources with updates</h1>
   <%= for source <- @sources do %>
   <h2>

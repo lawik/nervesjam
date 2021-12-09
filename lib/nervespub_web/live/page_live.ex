@@ -20,7 +20,7 @@ defmodule NervespubWeb.PageLive do
     Phoenix.PubSub.subscribe(Nervespub.PubSub, "updates")
     new_source = Sourcing.change_source(%Source{}, %{})
     starting_dt = DateTime.utc_now() |> DateTime.add(-@default_period, @default_unit)
-    sources = Sourcing.list_activity(starting_dt)
+    sources = Sourcing.list_activity(starting_dt, @default_activity_types)
     all_sources = Sourcing.list_source()
     activities = Sourcing.list_activity_chronological(starting_dt, @default_activity_types)
     socket = assign(socket,
