@@ -11,6 +11,8 @@ defmodule NervespubWeb.PageLive do
   @types ["GitHub Repo": "github-repo", "GitHub Organization": "github-org"]
   @default_period 14 * (3600 * 24)
   @default_unit :second
+  @activity_types ["release", "tag"]
+  @default_activity_types ["release"]
 
   @impl true
   def mount(_params, _session, socket) do
@@ -20,12 +22,15 @@ defmodule NervespubWeb.PageLive do
     starting_dt = DateTime.utc_now() |> DateTime.add(-@default_period, @default_unit)
     sources = Sourcing.list_activity(starting_dt)
     all_sources = Sourcing.list_source()
+    activities = Sourcing.list_activity_chronological(starting_dt, @default_activity_types)
     socket = assign(socket,
       starting_dt: starting_dt,
       new_source: new_source,
       sources: sources,
       all_sources: all_sources,
-      types: @types
+      types: @types,
+      activities: activities,
+      activity_types: @default_activity_types
     )
 
     {:ok, socket}

@@ -6,6 +6,7 @@
     <input name="dt" type="text" value="<%= @starting_dt %>" />
     <input type="submit" value="Filter" />
   </form>
+
   <h1>Sources with updates</h1>
   <%= for source <- @sources do %>
   <h2>
@@ -31,7 +32,7 @@
           <%= update.name || update.reference %>
         </a>
         <%= if update.text && byte_size(update.text) > 0 do %>
-        <pre><%= update.text %></pre>
+          <div><%= {:safe, Earmark.as_html!(update.text)} %></div>
         <% end %>
       </li>
     <% end %>

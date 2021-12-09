@@ -49,7 +49,8 @@ defmodule Nervespub.MixProject do
       {:plug_cowboy, "~> 2.0"},
       {:finch, "~> 0.6"},
       {:exqlite, "~> 0.4"},
-      {:tentacat, "~> 2.0"}
+      {:tentacat, "~> 2.0"},
+      {:earmark, "~> 1.4"}
     ]
   end
 

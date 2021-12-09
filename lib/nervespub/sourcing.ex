@@ -13,6 +13,15 @@ defmodule Nervespub.Sourcing do
 
   @default_types ["release", "tag"]
 
+  def list_activity_chronological(from_dt, types \\ @default_types) do
+    from(u in Update,
+      order_by: {:desc, u.occurred_at},
+      where: u.occurred_at > ^from_dt and u.type in ^types
+    )
+    |> Repo.all()
+    |> Repo.preload(:source)
+  end
+
   def list_activity(from_dt, types \\ @default_types) do
     from(s in Source,
       left_join: u in assoc(s, :updates),
@@ -273,6 +282,7 @@ defmodule Nervespub.Sourcing do
   end
 
   def tag_to_update(source_id, tag) do
+    if "v1.17.3" == tag["name"], do: IO.inspect(tag, label: "tag to update")
     case Repo.get_by(Update,
       type: "tag",
       source_id: source_id,
@@ -301,7 +311,7 @@ defmodule Nervespub.Sourcing do
 
   def release_to_update(source_id, release) do
     {:ok, dt, _} = DateTime.from_iso8601(release["created_at"])
-    {:ok, _} = store_update(source_id, release["tag_name"], %{
+    {:ok, _} = store_update(source_id, "release: " <> release["tag_name"], %{
       name: release["tag_name"],
       type: "release",
       url: release["html_url"] || release["url"],
