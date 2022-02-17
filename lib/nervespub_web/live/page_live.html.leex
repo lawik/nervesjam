@@ -10,12 +10,14 @@
   <h1>Newsletter-ready</h1>
   <%= for source <- @sources do %>
     <%= for update <- source.updates do %>
+        <div>
         <a href="<%= update.url %>" target="_blank">
           <%= source.name %>, <%= update.name || update.reference %>
         </a>
         <%= if update.text && byte_size(update.text) > 0 do %>
           <div><%= {:safe, Earmark.as_html!(update.text)} %></div>
         <% end %>
+        </div>
     <% end %>
   <div>
   </div>
