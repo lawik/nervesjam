@@ -2,7 +2,7 @@ use Mix.Config
 
 # Configure your database
 config :nervespub, Nervespub.Repo,
-  database: "nervespub_dev",
+  database: "db-nervespub.db",
   show_sensitive_data_on_connection_error: true,
   pool_size: 10
 
@@ -71,3 +71,6 @@ config :phoenix, :stacktrace_depth, 20
 
 # Initialize plugs at runtime for faster development compilation
 config :phoenix, :plug_init_mode, :runtime
+
+config :tentacat,
+  request_options: [timeout: 20_000, recv_timeout: 20_000]
