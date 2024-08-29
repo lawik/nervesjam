@@ -7,9 +7,9 @@
     <input type="submit" value="Filter" />
   </form>
 
-  <h1>Newsletter-ready</h1>
+  <h1>For the Newsletter</h1>
   <%= for source <- @sources do %>
-    <%= for update <- source.updates do %>
+    <%= for update <- Enum.uniq_by(source.updates, & &1.name) do %>
         <div>
         <a href="<%= update.url %>" target="_blank">
           <%= source.name %>, <%= update.name || update.reference %>
@@ -23,6 +23,7 @@
   </div>
   <% end %>
 
+<!--
   <h1>Sources with updates</h1>
   <%= for source <- @sources do %>
   <h2>
@@ -35,7 +36,7 @@
     <span style="font-size: 0.7em;"><%= source.type %></span>
   </h2>
   <ul>
-    <%= for update <- source.updates do %>
+    <%= for update <- Enum.uniq_by(source.updates, & &1.name) do %>
       <li>
         <span>
           <%= DateTime.to_date(update.occurred_at) %>
@@ -56,7 +57,9 @@
   <div>
   </div>
   <% end %>
+  -->
 </section>
+<!--
 <section>
 <h1>All sources</h1>
   <%= for source <- @all_sources do %>
@@ -75,7 +78,9 @@
   </div>
   <% end %>
 </section>
+-->
 <section >
+  <h1>Add source</h1>
   <%= f = form_for @new_source, "#", [phx_submit: :save_source] %>
   <%= label f, :type %>
   <%= select f, :type, @types %>

@@ -1,0 +1,6 @@
+#!/bin/bash
+
+source ~/.nervesnewstoken
+
+iex -S mix phx.server
+
